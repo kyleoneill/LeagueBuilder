@@ -1,0 +1,4 @@
+.vscode
+node_modules
+builds.json
+champion.json
