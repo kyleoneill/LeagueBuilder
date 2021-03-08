@@ -10,6 +10,8 @@
   "license": "ISC",
   "dependencies": {
     "axios": "^0.21.1",
-    "jsdom": "^16.4.0"
+    "jsdom": "^16.4.0",
+    "sequelize": "^6.5.0",
+    "sqlite3": "^5.0.2"
   }
 }

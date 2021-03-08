@@ -2,3 +2,6 @@
 node_modules
 builds.json
 champion.json
+item.json
+*.sqlite
+todo

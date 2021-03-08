@@ -1,38 +1,49 @@
 const { getChampionBuild } = require("./getBuild");
+const { getChampionCounter } = require("./getCounter");
 const dataDragon = require("../champion.json");
-const fs = require("fs");
+const ddItems = require("../item.json");
 
 async function sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms))
 }
 
+function mapItemsToIndex() {
+    var index = [];
+    for(const key in ddItems.data) {
+        index.push(ddItems.data[key].name);
+    }
+    return index;
+}
+
 async function main() {
+    //these should be arguments or something
+    let rank = "overall";
+    let getBuild = false;
+    let getCounter = true;
+
     const ddLength = Object.keys(dataDragon.data).length;
-    let builds = [];
+    let index = 0;
+    let itemMap = mapItemsToIndex();
     for (const key in dataDragon.data) {
         let champion = dataDragon.data[key].id.toLowerCase();
         if(champion === "monkeyking") {
             champion = "wukong";
         }
-        let build = await getChampionBuild(champion);
-        let index = builds.push(build);
-        //save to file here
+        if(getBuild) {
+            await getChampionBuild(champion, rank, itemMap);
+        }
+        if(getCounter) {
+            await getChampionCounter(champion, rank);
+        }
+        index++;
         console.clear();
         console.log(`Finished ${index} of ${ddLength} champions`);
         await sleep(1000);
     }
-    fs.writeFile("builds.json", JSON.stringify(builds), err => {
-        if(err) {
-            console.log("Failed to write output file", err);
-        }
-        else {
-            console.log("Successfully wrote build file");
-        }
-    });
 }
 
 main().then(() => {
-    console.log("Finished writing build json");
+    console.log("Finished writing build information");
 });
 
 //I need tests for the export that checks build info for _every champion_

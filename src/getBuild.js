@@ -1,23 +1,10 @@
-const axios = require("axios");
-const jsdom = require("jsdom");
-const { JSDOM } = jsdom;
 const spriteSheet = require("../spriteMap.json");
-
-class Build {
-    constructor(name, runes, items) {
-        this.name = name;
-        this.runes = runes;
-        this.items = items;
-    }
-}
-
-class Runes {
-    constructor() {
-        this.primary = [];
-        this.secondary = [];
-        this.tertiary = [];
-    }
-}
+const { getBuildDocument } = require("./getRequests");
+const {
+    Champion,
+    Runes,
+    Items
+} = require("./database");
 
 function cleanPerkName(nameToClean) {
     let re = new RegExp(/\s+/, 'g');
@@ -32,27 +19,27 @@ function cleanPerkName(nameToClean) {
     return nameToClean
 }
 
-function matchItemName(backgroundImage, backgroundPosition) {
-    let sheet;
-    if(backgroundImage.includes("item0.png")) {
-        sheet = spriteSheet["item0.png"];
+function mapItemName(style, itemMap) {
+    let index = 0;
+    if(style.backgroundImage.includes("item1.png")) {
+        index += 100;
     }
-    else if(backgroundImage.includes("item1.png")) {
-        sheet = spriteSheet["item1.png"];
+    else if(style.backgroundImage.includes("item2.png")) {
+        index += 200;
     }
-    else if(backgroundImage.includes("item2.png")) {
-        sheet = spriteSheet["item2.png"];
-    }
-    else {
-        return new Error("Request for a sprite sheet that is not mapped")
-    }
-    let item = sheet[`${backgroundPosition}`];
-    return item;
+    let split = style.backgroundPosition.split(' ');
+    let x = Math.abs(parseInt(split[0].slice(0, -2)));
+    let y = Math.abs(parseInt(split[1].slice(0, -2)));
+    index += x / 48;
+    index += (y / 48) * 10;
+    return itemMap[index];
 }
 
 // TODO - make this DRY
-function getRunesFromDoc(doc) {
-    let runes = new Runes();
+async function saveRuneTable(doc, championName) {
+    let runesPrimary = [];
+    let runesSecondary = [];
+    let runesTertiary = [];
 
     let runeContainer = doc.querySelector(".rune-trees-container-2.media-query_MOBILE_LARGE__DESKTOP_LARGE");
     let primaryContainer = runeContainer.children[0];
@@ -61,56 +48,86 @@ function getRunesFromDoc(doc) {
     let tertiaryContainer = secondaryTertiaryContainer.children[2];
 
     let primaryRuneName = primaryContainer.querySelector(".perk-style-title").textContent;
-    runes.primary.push(primaryRuneName);
+    runesPrimary.push(primaryRuneName);
     let activePrimaryPerks = primaryContainer.querySelectorAll(".perk-active > img");
     activePrimaryPerks.forEach(activePerk => {
         let cleanedName = cleanPerkName(activePerk.alt);
-        runes.primary.push(cleanedName);
+        runesPrimary.push(cleanedName);
     });
 
-    runes.secondary.push(secondaryContainer.querySelector(".perk-style-title").textContent);
+    runesSecondary.push(secondaryContainer.querySelector(".perk-style-title").textContent);
     let activeSecondaryPerks = secondaryContainer.querySelectorAll(".perk-active > img");
     activeSecondaryPerks.forEach(activePerk => {
         let cleanedName = cleanPerkName(activePerk.alt);
-        runes.secondary.push(cleanedName);
+        runesSecondary.push(cleanedName);
     });
 
     let activeTertiaryPerks = tertiaryContainer.querySelectorAll(".shard-active > img");
     activeTertiaryPerks.forEach(activePerk => {
         let cleanedName = cleanPerkName(activePerk.alt)
-        runes.tertiary.push(cleanedName);
+        runesTertiary.push(cleanedName);
     });
 
-    return runes;
+    await Runes.create({
+        runeChampionName: championName,
+        runePrimary: runesPrimary.join('&'),
+        runeSecondary: runesSecondary.join('&'),
+        runeTertiary: runesTertiary.join('&')
+    });
 }
 
-function getItemsFromDoc(doc) {
+function populateItemArr(arr, itemsContainer, selector, itemMap) {
+    let images = itemsContainer.querySelectorAll(selector);
+    images.forEach(itemContainer => {
+        let itemName = mapItemName(itemContainer.style, itemMap);
+        arr.push(itemName);
+    });
+}
+
+async function saveItemTable(doc, championName, itemMap) {
+    let starting = [];
+    let mythic = [];
+    let fourth = [];
+    let fifth = [];
+    let sixth = [];
+
     let itemsContainer = doc.querySelector(".recommended-build_items.media-query_DESKTOP_MEDIUM__DESKTOP_LARGE");
-    let itemImages = itemsContainer.querySelectorAll(".item-img > div > div");
-    let itemNames = [];
-    itemImages.forEach(itemContainer => {
-        let backgroundImage = itemContainer.style.backgroundImage;
-        let backgroundPosition = itemContainer.style.backgroundPosition;
-        let itemName = matchItemName(backgroundImage, backgroundPosition);
-        itemNames.push(itemName);
+    populateItemArr(starting, itemsContainer, ".starting-items .item-img > div > div", itemMap);
+    populateItemArr(mythic, itemsContainer, ".core-items .item-img > div > div", itemMap);
+    populateItemArr(fourth, itemsContainer, ".item-options-1 .item-img > div > div", itemMap);
+    populateItemArr(fifth, itemsContainer, ".item-options-2 .item-img > div > div", itemMap);
+    populateItemArr(sixth, itemsContainer, ".item-options-3 .item-img > div > div", itemMap);
+    await Items.create({
+        itemChampionName: championName,
+        startingItems: starting.join('&'),
+        mythicCore: mythic.join('&'),
+        fourthItem: fourth.join('&'),
+        fifthItem: fifth.join('&'),
+        sixthItem: sixth.join('&')
     });
-    return itemNames;
 }
 
-async function getChampionBuild(championName) {
-    console.log(championName);
-    const res = await axios.default.get(`https://u.gg/lol/champions/${championName}/build`);
-    const dom = new JSDOM(res.data);
-    const doc = dom.window.document;
+async function saveChampionTable(doc, championName) {
+    let rankingSection = doc.querySelector(".champion-ranking-stats");
+    let winRate = parseFloat(rankingSection.querySelector(".win-rate > div").textContent.slice(0, -1));
+    let pickRate = parseFloat(rankingSection.querySelector(".pick-rate > div").textContent.slice(0, -1));
+    let banRate = parseFloat(rankingSection.querySelector(".ban-rate > div").textContent.slice(0, -1));
+    await Champion.create({
+        champName: championName,
+        winRate: winRate,
+        pickRate: pickRate,
+        banRate: banRate
+    });
+}
 
-    const runes = getRunesFromDoc(doc);
-    const items = getItemsFromDoc(doc);
+async function getChampionBuild(championName, rank, itemMap) {
+    const doc = await getBuildDocument(championName, rank);
 
-    return new Build(championName, runes, items);
+    await saveChampionTable(doc, championName);
+    await saveRuneTable(doc, championName);
+    await saveItemTable(doc, championName, itemMap);
 }
 
 module.exports = {
     getChampionBuild
 }
-
-// https://u.gg/lol/champions/veigar/build
