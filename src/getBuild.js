@@ -1,4 +1,3 @@
-const spriteSheet = require("../spriteMap.json");
 const { getBuildDocument } = require("./getRequests");
 const {
     Champion,
@@ -107,7 +106,7 @@ async function saveItemTable(doc, championName, itemMap) {
     });
 }
 
-async function saveChampionTable(doc, championName) {
+async function saveChampionTable(doc, championName, humanReadableName, title) {
     let rankingSection = doc.querySelector(".champion-ranking-stats");
     let winRate = parseFloat(rankingSection.querySelector(".win-rate > div").textContent.slice(0, -1));
     let pickRate = parseFloat(rankingSection.querySelector(".pick-rate > div").textContent.slice(0, -1));
@@ -116,14 +115,16 @@ async function saveChampionTable(doc, championName) {
         champName: championName,
         winRate: winRate,
         pickRate: pickRate,
-        banRate: banRate
+        banRate: banRate,
+        humanReadableName: humanReadableName,
+        title: title
     });
 }
 
-async function getChampionBuild(championName, rank, itemMap) {
+async function getChampionBuild(championName, rank, itemMap, humanReadableName, title) {
     const doc = await getBuildDocument(championName, rank);
 
-    await saveChampionTable(doc, championName);
+    await saveChampionTable(doc, championName, humanReadableName, title);
     await saveRuneTable(doc, championName);
     await saveItemTable(doc, championName, itemMap);
 }

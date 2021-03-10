@@ -21,6 +21,14 @@ const Champion = sequelize.define("Champion", {
     banRate: {
         type: DataTypes.NUMBER,
         allowNull: true
+    },
+    humanReadableName: {
+        type: DataTypes.STRING,
+        allowNull: false
+    },
+    title: {
+        type: DataTypes.STRING,
+        allowNull: false
     }
 });
 

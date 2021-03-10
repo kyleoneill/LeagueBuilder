@@ -18,19 +18,21 @@ function mapItemsToIndex() {
 async function main() {
     //these should be arguments or something
     let rank = "overall";
-    let getBuild = false;
-    let getCounter = true;
+    let getBuild = true;
+    let getCounter = false;
 
     const ddLength = Object.keys(dataDragon.data).length;
     let index = 0;
     let itemMap = mapItemsToIndex();
     for (const key in dataDragon.data) {
         let champion = dataDragon.data[key].id.toLowerCase();
+        let humanReadableName = dataDragon.data[key].name;
+        let title = dataDragon.data[key].title;
         if(champion === "monkeyking") {
             champion = "wukong";
         }
         if(getBuild) {
-            await getChampionBuild(champion, rank, itemMap);
+            await getChampionBuild(champion, rank, itemMap, humanReadableName, title);
         }
         if(getCounter) {
             await getChampionCounter(champion, rank);
