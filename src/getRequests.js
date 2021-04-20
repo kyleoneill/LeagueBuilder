@@ -19,8 +19,27 @@ async function getCounterDocument(champion, rank) {
     return doc; 
 }
 
+async function getLeagueVersion() {
+    const res = await axios.default.get("https://ddragon.leagueoflegends.com/api/versions.json");
+    let version = res.data[0];
+    return version;
+}
+
+async function getChampionFile(version) {
+    const res = await axios.default.get(`http://ddragon.leagueoflegends.com/cdn/${version}/data/en_US/champion.json`);
+    return res.data;
+}
+
+async function getItemFile(version) {
+    const res = await axios.default.get(`http://ddragon.leagueoflegends.com/cdn/${version}/data/en_US/item.json`);
+    return res.data;
+}
+
 module.exports = {
     getDocumentFromURL,
     getBuildDocument,
-    getCounterDocument
+    getCounterDocument,
+    getLeagueVersion,
+    getChampionFile,
+    getItemFile
 }
